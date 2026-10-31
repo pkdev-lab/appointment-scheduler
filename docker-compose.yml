@@ -1,35 +1,52 @@
-version: '3.7'
 
 services:
-
   backend:
-    image: slabiak/appointmentscheduler:0.0.1-SNAPSHOT
+    image: appointmentscheduler:1.0.5
+    container_name: appointmentscheduler-app
     ports:
       - "8080:8080"
-    restart: always
+    environment:
+      DB_URL: "jdbc:mysql://db:3306/appointmentscheduler?useSSL=false&serverTimezone=UTC"
+      DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      MAILING_ENABLED: ${MAILING_ENABLED:-true}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
     depends_on:
-      - appointmentscheduler_db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
-      - appointmentscheduler_network
+      - appointmentscheduler-network
 
-  appointmentscheduler_db:
+  db:
     image: mysql:5.7
-    ports:
-      - "3306:3306"
-    restart: always
+    container_name: appointmentscheduler-db
     environment:
       MYSQL_DATABASE: appointmentscheduler
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
     volumes:
-      - appointmentscheduler_volume:/var/lib/mysql
-      - ./src/main/resources:/docker-entrypoint-initdb.d
+      - appointmentscheduler_data:/var/lib/mysql
+      - ./src/main/resources:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
     networks:
-      - appointmentscheduler_network
-
-volumes:
-  appointmentscheduler_volume:
+      - appointmentscheduler-network
 
 networks:
-  appointmentscheduler_network:
+  appointmentscheduler-network:
+    external: true
+    name: appointmentscheduler-network
+
+volumes:
+  appointmentscheduler_data:
+    external: true
