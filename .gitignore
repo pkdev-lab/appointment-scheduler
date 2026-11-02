@@ -39,3 +39,7 @@ Thumbs.db
 
 # IDE
 .vscode/
+
+# Extra
+workflow.txt
+docker-compose.yml_backup
